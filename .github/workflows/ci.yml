@@ -1,0 +1,38 @@
+name: RentEase CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: http://localhost:5000/api
+        run: npm run build
+
+      - name: Build backend image
+        run: docker build ./backend -t rentease-backend
+
+      - name: Build frontend image
+        run: docker build ./frontend -t rentease-frontend --build-arg VITE_API_URL=http://localhost:5000/api
