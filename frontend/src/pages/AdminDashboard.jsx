@@ -3,13 +3,13 @@ import { request } from "../api/client";
 import StatCard from "../components/StatCard";
 import { useAuth } from "../context/AuthContext";
 
-const currency = new Intl.NumberFormat("en-US", {
+const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
-  currency: "USD"
+  currency: "INR"
 });
 
 export default function AdminDashboard() {
-  const { token } = useAuth();
+  const { token, user: currentUser } = useAuth();
   const [data, setData] = useState({ metrics: {}, users: [], items: [], bookings: [] });
 
   const load = async () => {
@@ -21,15 +21,8 @@ export default function AdminDashboard() {
     load();
   }, []);
 
-  const moderate = async (id, status) => {
-    await request(
-      `/admin/listings/${id}/status`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ status })
-      },
-      token
-    );
+  const deleteListing = async (id) => {
+    await request(`/items/${id}`, { method: "DELETE" }, token);
     load();
   };
 
@@ -51,7 +44,9 @@ export default function AdminDashboard() {
         <section className="panel">
           <h2>Users</h2>
           <div className="stack-list">
-            {data.users.map((user) => (
+            {data.users
+              .filter((user) => user._id !== currentUser?.id)
+              .map((user) => (
               <article key={user._id} className="data-card">
                 <div>
                   <strong>{user.name}</strong>
@@ -64,7 +59,7 @@ export default function AdminDashboard() {
         </section>
 
         <section className="panel">
-          <h2>Listing Moderation</h2>
+          <h2>All Listings</h2>
           <div className="stack-list">
             {data.items.map((item) => (
               <article key={item._id} className="data-card">
@@ -74,11 +69,8 @@ export default function AdminDashboard() {
                   <small>{item.status}</small>
                 </div>
                 <div className="action-row">
-                  <button className="primary-button" type="button" onClick={() => moderate(item._id, "approved")}>
-                    Approve
-                  </button>
-                  <button className="ghost-button" type="button" onClick={() => moderate(item._id, "rejected")}>
-                    Reject
+                  <button className="ghost-button" type="button" onClick={() => deleteListing(item._id)}>
+                    Delete
                   </button>
                 </div>
               </article>

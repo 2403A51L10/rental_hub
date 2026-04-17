@@ -7,28 +7,21 @@ const initialItem = {
   title: "",
   description: "",
   category: "",
-  pricePerDay: "",
+  pricePerHour: "",
   availabilityStart: "",
   availabilityEnd: "",
   image: null
 };
 
-const currency = new Intl.NumberFormat("en-US", {
+const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
-  currency: "USD"
+  currency: "INR"
 });
 
 export default function OwnerDashboard() {
-  const { token, user, refreshMe } = useAuth();
+  const { token } = useAuth();
   const [data, setData] = useState({ items: [], bookings: [], reviews: [], metrics: {} });
   const [form, setForm] = useState(initialItem);
-  const [profile, setProfile] = useState({
-    name: user?.name || "",
-    phone: user?.phone || "",
-    bio: user?.bio || "",
-    location: user?.location || "",
-    avatar: user?.avatar || ""
-  });
   const [message, setMessage] = useState("");
 
   const loadDashboard = async () => {
@@ -46,7 +39,7 @@ export default function OwnerDashboard() {
     Object.entries(form).forEach(([key, value]) => value && body.append(key, value));
     await request("/items", { method: "POST", body }, token);
     setForm(initialItem);
-    setMessage("Listing submitted successfully.");
+    setMessage("Listing published successfully.");
     loadDashboard();
   };
 
@@ -62,18 +55,10 @@ export default function OwnerDashboard() {
     loadDashboard();
   };
 
-  const updateProfile = async (event) => {
-    event.preventDefault();
-    await request(
-      "/profile/me",
-      {
-        method: "PUT",
-        body: JSON.stringify(profile)
-      },
-      token
-    );
-    await refreshMe();
-    setMessage("Profile updated.");
+  const deleteListing = async (id) => {
+    await request(`/items/${id}`, { method: "DELETE" }, token);
+    setMessage("Listing deleted successfully.");
+    loadDashboard();
   };
 
   return (
@@ -92,8 +77,8 @@ export default function OwnerDashboard() {
 
       {message && <p className="success-text">{message}</p>}
 
-      <div className="dashboard-grid">
-        <form className="panel form-grid" onSubmit={createListing}>
+      <div className="dashboard-grid owner-create-row">
+        <form className="panel form-grid owner-create-panel" onSubmit={createListing}>
           <h2>Create Listing</h2>
           <label>
             Title
@@ -108,16 +93,16 @@ export default function OwnerDashboard() {
             <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
           </label>
           <label>
-            Price Per Day
-            <input type="number" value={form.pricePerDay} onChange={(e) => setForm({ ...form, pricePerDay: e.target.value })} required />
+            Price Per Hour
+            <input type="number" value={form.pricePerHour} onChange={(e) => setForm({ ...form, pricePerHour: e.target.value })} required />
           </label>
           <label>
-            Availability Start
-            <input type="date" value={form.availabilityStart} onChange={(e) => setForm({ ...form, availabilityStart: e.target.value })} required />
+            Start Time
+            <input type="datetime-local" value={form.availabilityStart} onChange={(e) => setForm({ ...form, availabilityStart: e.target.value })} required />
           </label>
           <label>
-            Availability End
-            <input type="date" value={form.availabilityEnd} onChange={(e) => setForm({ ...form, availabilityEnd: e.target.value })} required />
+            End Time
+            <input type="datetime-local" value={form.availabilityEnd} onChange={(e) => setForm({ ...form, availabilityEnd: e.target.value })} required />
           </label>
           <label>
             Listing Image
@@ -125,33 +110,6 @@ export default function OwnerDashboard() {
           </label>
           <button className="primary-button" type="submit">
             Publish Listing
-          </button>
-        </form>
-
-        <form className="panel form-grid" onSubmit={updateProfile}>
-          <h2>Profile</h2>
-          <label>
-            Name
-            <input value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} required />
-          </label>
-          <label>
-            Phone
-            <input value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} />
-          </label>
-          <label>
-            Location
-            <input value={profile.location} onChange={(e) => setProfile({ ...profile, location: e.target.value })} />
-          </label>
-          <label>
-            Avatar URL
-            <input value={profile.avatar} onChange={(e) => setProfile({ ...profile, avatar: e.target.value })} />
-          </label>
-          <label>
-            Bio
-            <textarea value={profile.bio} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} />
-          </label>
-          <button className="ghost-button" type="submit">
-            Save Profile
           </button>
         </form>
       </div>
@@ -171,8 +129,13 @@ export default function OwnerDashboard() {
                   <strong>{item.title}</strong>
                   <p>{item.description}</p>
                   <small>
-                    {currency.format(item.pricePerDay)}/day • {item.status}
+                    {currency.format(item.pricePerHour)}/hour | {item.status}
                   </small>
+                </div>
+                <div className="action-row">
+                  <button className="ghost-button" type="button" onClick={() => deleteListing(item._id)}>
+                    Delete
+                  </button>
                 </div>
               </article>
             ))}
@@ -187,8 +150,7 @@ export default function OwnerDashboard() {
                 <div>
                   <strong>{booking.item?.title}</strong>
                   <p>
-                    {booking.renter?.name} • {new Date(booking.startDate).toLocaleDateString()} to{" "}
-                    {new Date(booking.endDate).toLocaleDateString()}
+                    {booking.renter?.name} | {new Date(booking.startDate).toLocaleString()} to {new Date(booking.endDate).toLocaleString()}
                   </p>
                   <small>{currency.format(booking.totalPrice)}</small>
                 </div>
@@ -219,7 +181,7 @@ export default function OwnerDashboard() {
               <strong>{review.item?.title}</strong>
               <p>{review.comment}</p>
               <small>
-                {review.renter?.name} • {review.rating}/5
+                {review.renter?.name} | {review.rating}/5
               </small>
             </article>
           ))}

@@ -19,10 +19,15 @@ export const request = async (path, options = {}, token) => {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers
+    });
+  } catch (_error) {
+    throw new Error("Unable to reach the server. Make sure the backend is running on port 5000.");
+  }
 
   return parseResponse(response);
 };

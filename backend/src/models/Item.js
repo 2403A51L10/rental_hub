@@ -20,7 +20,7 @@ const itemSchema = new mongoose.Schema(
       type: String,
       default: "General"
     },
-    pricePerDay: {
+    pricePerHour: {
       type: Number,
       required: true,
       min: 0

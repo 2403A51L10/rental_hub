@@ -40,9 +40,9 @@ export const createBooking = async (req, res) => {
     return res.status(409).json({ message: "These dates are already reserved" });
   }
 
-  const { total, days } = calcBookingPrice(startDate, endDate, item.pricePerDay);
-  if (days <= 0) {
-    return res.status(400).json({ message: "Invalid booking dates" });
+  const { total, hours } = calcBookingPrice(startDate, endDate, item.pricePerHour);
+  if (hours <= 0) {
+    return res.status(400).json({ message: "Invalid booking times" });
   }
 
   const booking = await Booking.create({
@@ -94,6 +94,22 @@ export const markBookingComplete = async (req, res) => {
   }
 
   booking.status = "completed";
+  await booking.save();
+  res.json(booking);
+};
+
+export const cancelBooking = async (req, res) => {
+  const booking = await Booking.findOne({
+    _id: req.params.id,
+    renter: req.user._id,
+    status: { $in: ["pending", "approved"] }
+  });
+
+  if (!booking) {
+    return res.status(404).json({ message: "Active booking not found" });
+  }
+
+  booking.status = "cancelled";
   await booking.save();
   res.json(booking);
 };

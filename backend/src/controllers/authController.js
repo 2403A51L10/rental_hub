@@ -53,6 +53,20 @@ export const login = async (req, res) => {
   });
 };
 
+export const resetPassword = async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(404).json({ message: "No account found with that email" });
+  }
+
+  user.password = await bcrypt.hash(password, 10);
+  await user.save();
+
+  res.json({ message: "Password updated successfully. Please log in with your new password." });
+};
+
 export const getMe = async (req, res) => {
   res.json(req.user);
 };

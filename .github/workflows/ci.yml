@@ -30,9 +30,3 @@ jobs:
         env:
           VITE_API_URL: http://localhost:5000/api
         run: npm run build
-
-      - name: Build backend image
-        run: docker build ./backend -t rentease-backend
-
-      - name: Build frontend image
-        run: docker build ./frontend -t rentease-frontend --build-arg VITE_API_URL=http://localhost:5000/api

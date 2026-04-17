@@ -1,6 +1,7 @@
 import express from "express";
 import { body } from "express-validator";
 import {
+  cancelBooking,
   createBooking,
   getRenterBookings,
   markBookingComplete,
@@ -35,5 +36,6 @@ router.patch(
   asyncHandler(updateBookingStatus)
 );
 router.patch("/:id/complete", protect, authorize("renter"), asyncHandler(markBookingComplete));
+router.patch("/:id/cancel", protect, authorize("renter"), asyncHandler(cancelBooking));
 
 export default router;

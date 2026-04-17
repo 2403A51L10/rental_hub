@@ -3,20 +3,21 @@ import { API_BASE_URL, request } from "../api/client";
 import StatCard from "../components/StatCard";
 import { useAuth } from "../context/AuthContext";
 
-const currency = new Intl.NumberFormat("en-US", {
+const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
-  currency: "USD"
+  currency: "INR"
 });
 
-const calcDays = (startDate, endDate) => {
+const calcHours = (startDate, endDate) => {
   if (!startDate || !endDate) return 0;
-  return Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+  return Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60));
 };
 
 export default function RenterDashboard() {
   const { token } = useAuth();
   const [items, setItems] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedItem, setSelectedItem] = useState("");
   const [dates, setDates] = useState({ startDate: "", endDate: "" });
   const [reviewForm, setReviewForm] = useState({ bookingId: "", rating: 5, comment: "" });
@@ -35,8 +36,32 @@ export default function RenterDashboard() {
     load();
   }, []);
 
+  const categories = useMemo(() => {
+    const categoryMap = new Map();
+
+    items.forEach((item) => {
+      const rawCategory = String(item.category || "").trim();
+      if (!rawCategory) return;
+
+      const normalizedKey = rawCategory.toLowerCase();
+      if (!categoryMap.has(normalizedKey)) {
+        categoryMap.set(normalizedKey, rawCategory.charAt(0).toUpperCase() + rawCategory.slice(1).toLowerCase());
+      }
+    });
+
+    return Array.from(categoryMap.values()).sort();
+  }, [items]);
+  const filteredItems = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          !selectedCategory ||
+          String(item.category || "").trim().toLowerCase() === selectedCategory.toLowerCase()
+      ),
+    [items, selectedCategory]
+  );
   const currentItem = useMemo(() => items.find((item) => item._id === selectedItem), [items, selectedItem]);
-  const totalPrice = currentItem ? calcDays(dates.startDate, dates.endDate) * currentItem.pricePerDay : 0;
+  const totalPrice = currentItem ? calcHours(dates.startDate, dates.endDate) * currentItem.pricePerHour : 0;
 
   const bookItem = async (event) => {
     event.preventDefault();
@@ -56,6 +81,12 @@ export default function RenterDashboard() {
   const completeBooking = async (id) => {
     await request(`/bookings/${id}/complete`, { method: "PATCH" }, token);
     setMessage("Booking marked as completed.");
+    load();
+  };
+
+  const cancelBooking = async (id) => {
+    await request(`/bookings/${id}/cancel`, { method: "PATCH" }, token);
+    setMessage("Booking cancelled.");
     load();
   };
 
@@ -87,29 +118,47 @@ export default function RenterDashboard() {
         <form className="panel form-grid" onSubmit={bookItem}>
           <h2>Book an Item</h2>
           <label>
-            Choose Item
-            <select value={selectedItem} onChange={(e) => setSelectedItem(e.target.value)} required>
-              <option value="">Select a listing</option>
-              {items.map((item) => (
-                <option key={item._id} value={item._id}>
-                  {item.title} - {currency.format(item.pricePerDay)}/day
+            Choose Category
+            <select
+              value={selectedCategory}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setSelectedItem("");
+              }}
+              required
+            >
+              <option value="">Select a category</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            Start Date
-            <input type="date" value={dates.startDate} onChange={(e) => setDates({ ...dates, startDate: e.target.value })} required />
+            Choose Item
+            <select value={selectedItem} onChange={(e) => setSelectedItem(e.target.value)} required>
+              <option value="">{selectedCategory ? "Select a listing" : "Choose a category first"}</option>
+              {filteredItems.map((item) => (
+                <option key={item._id} value={item._id}>
+                  {item.title} - {currency.format(item.pricePerHour)}/hour (Available: {new Date(item.availabilityStart).toLocaleString()} to {new Date(item.availabilityEnd).toLocaleString()})
+                </option>
+              ))}
+            </select>
           </label>
           <label>
-            End Date
-            <input type="date" value={dates.endDate} onChange={(e) => setDates({ ...dates, endDate: e.target.value })} required />
+            Start Time
+            <input type="datetime-local" value={dates.startDate} onChange={(e) => setDates({ ...dates, startDate: e.target.value })} required />
+          </label>
+          <label>
+            End Time
+            <input type="datetime-local" value={dates.endDate} onChange={(e) => setDates({ ...dates, endDate: e.target.value })} required />
           </label>
           <div className="price-box">
             <span>Total</span>
             <strong>{currency.format(totalPrice || 0)}</strong>
           </div>
-          <button className="primary-button" type="submit" disabled={!selectedItem}>
+          <button className="primary-button" type="submit" disabled={!selectedCategory || !selectedItem}>
             Send Booking Request
           </button>
         </form>
@@ -128,7 +177,10 @@ export default function RenterDashboard() {
                   <strong>{item.title}</strong>
                   <p>{item.description}</p>
                   <small>
-                    {currency.format(item.pricePerDay)}/day • {item.owner?.name}
+                    {currency.format(item.pricePerHour)}/hour | {item.owner?.name}
+                  </small>
+                  <small>
+                    Available: {new Date(item.availabilityStart).toLocaleString()} to {new Date(item.availabilityEnd).toLocaleString()}
                   </small>
                 </div>
               </article>
@@ -146,13 +198,17 @@ export default function RenterDashboard() {
                 <div>
                   <strong>{booking.item?.title}</strong>
                   <p>
-                    {new Date(booking.startDate).toLocaleDateString()} to{" "}
-                    {new Date(booking.endDate).toLocaleDateString()}
+                    {new Date(booking.startDate).toLocaleString()} to {new Date(booking.endDate).toLocaleString()}
                   </p>
                   <small>{currency.format(booking.totalPrice)}</small>
                 </div>
                 <div className="action-row">
                   <span className={`status-chip status-${booking.status}`}>{booking.status}</span>
+                  {["pending", "approved"].includes(booking.status) && (
+                    <button className="ghost-button" type="button" onClick={() => cancelBooking(booking._id)}>
+                      Cancel Booking
+                    </button>
+                  )}
                   {booking.status === "approved" && (
                     <button className="ghost-button" type="button" onClick={() => completeBooking(booking._id)}>
                       Mark Complete

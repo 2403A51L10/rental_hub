@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { API_BASE_URL, request } from "../api/client";
 
-const currency = new Intl.NumberFormat("en-US", {
+const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
-  currency: "USD"
+  currency: "INR"
 });
 
 export default function HomePage() {
@@ -71,7 +71,7 @@ export default function HomePage() {
             <div className="listing-card-body">
               <div className="listing-card-top">
                 <h3>{item.title}</h3>
-                <span>{currency.format(item.pricePerDay)}/day</span>
+                <span>{currency.format(item.pricePerHour)}/hour</span>
               </div>
               <p>{item.description}</p>
               <div className="meta-row">

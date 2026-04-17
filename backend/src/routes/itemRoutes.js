@@ -3,6 +3,7 @@ import { body } from "express-validator";
 import {
   browseItems,
   createItem,
+  deleteItem,
   getItemById,
   getOwnerInsights,
   getOwnerItems,
@@ -28,7 +29,7 @@ router.post(
   [
     body("title").notEmpty(),
     body("description").notEmpty(),
-    body("pricePerDay").isFloat({ min: 0 }),
+    body("pricePerHour").isFloat({ min: 0 }),
     body("availabilityStart").isISO8601(),
     body("availabilityEnd").isISO8601()
   ],
@@ -43,5 +44,6 @@ router.put(
   upload.single("image"),
   asyncHandler(updateItem)
 );
+router.delete("/:id", protect, authorize("owner", "admin"), asyncHandler(deleteItem));
 
 export default router;

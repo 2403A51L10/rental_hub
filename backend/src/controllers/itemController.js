@@ -5,17 +5,27 @@ import { Review } from "../models/Review.js";
 const withImageUrl = (req) =>
   req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl || "";
 
+const normalizeCategory = (value) => {
+  const category = String(value || "").trim().toLowerCase();
+  if (!category) return "General";
+
+  return category
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 export const createItem = async (req, res) => {
   const item = await Item.create({
     owner: req.user._id,
     title: req.body.title,
     description: req.body.description,
-    category: req.body.category,
-    pricePerDay: req.body.pricePerDay,
+    category: normalizeCategory(req.body.category),
+    pricePerHour: req.body.pricePerHour,
     availabilityStart: req.body.availabilityStart,
     availabilityEnd: req.body.availabilityEnd,
     imageUrl: withImageUrl(req),
-    status: process.env.ENABLE_LISTING_MODERATION === "true" ? "pending" : "approved"
+    status: "approved"
   });
 
   res.status(201).json(item);
@@ -30,8 +40,8 @@ export const updateItem = async (req, res) => {
   Object.assign(item, {
     title: req.body.title ?? item.title,
     description: req.body.description ?? item.description,
-    category: req.body.category ?? item.category,
-    pricePerDay: req.body.pricePerDay ?? item.pricePerDay,
+    category: req.body.category ? normalizeCategory(req.body.category) : item.category,
+    pricePerHour: req.body.pricePerHour ?? item.pricePerHour,
     availabilityStart: req.body.availabilityStart ?? item.availabilityStart,
     availabilityEnd: req.body.availabilityEnd ?? item.availabilityEnd
   });
@@ -40,9 +50,7 @@ export const updateItem = async (req, res) => {
     item.imageUrl = withImageUrl(req);
   }
 
-  if (process.env.ENABLE_LISTING_MODERATION === "true") {
-    item.status = "pending";
-  }
+  item.status = "approved";
 
   await item.save();
   res.json(item);
@@ -51,6 +59,23 @@ export const updateItem = async (req, res) => {
 export const getOwnerItems = async (req, res) => {
   const items = await Item.find({ owner: req.user._id }).sort({ createdAt: -1 });
   res.json(items);
+};
+
+export const deleteItem = async (req, res) => {
+  const item = await Item.findById(req.params.id);
+  if (!item) {
+    return res.status(404).json({ message: "Item not found" });
+  }
+
+  const isAdmin = req.user.role === "admin";
+  const isOwner = String(item.owner) === String(req.user._id);
+
+  if (!isAdmin && !isOwner) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  await item.deleteOne();
+  res.json({ message: "Item deleted successfully" });
 };
 
 export const browseItems = async (req, res) => {
@@ -65,13 +90,13 @@ export const browseItems = async (req, res) => {
   }
 
   if (category) {
-    filters.category = category;
+    filters.category = normalizeCategory(category);
   }
 
   if (minPrice || maxPrice) {
-    filters.pricePerDay = {};
-    if (minPrice) filters.pricePerDay.$gte = Number(minPrice);
-    if (maxPrice) filters.pricePerDay.$lte = Number(maxPrice);
+    filters.pricePerHour = {};
+    if (minPrice) filters.pricePerHour.$gte = Number(minPrice);
+    if (maxPrice) filters.pricePerHour.$lte = Number(maxPrice);
   }
 
   const items = await Item.find(filters)
