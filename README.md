@@ -2,6 +2,7 @@
 
 RentEase is a full-stack rental marketplace where owners can list items for rent, renters can browse and book items, and admins can moderate listings and monitor activity. The app is built with modern web technologies and supports role-based access for owners, renters, and admins.
 
+## Link
 GitHub: https://github.com/2403A51L10/rental_hub
 
 ## Project Description
@@ -13,7 +14,7 @@ RentEase makes it easy to publish rental listings, manage bookings, and review c
 - Frontend: React, Vite, JavaScript, CSS
 - Backend: Node.js, Express, JWT, Multer
 - Database: MongoDB, Mongoose
-- Deployment / DevOps: Render, Docker Compose, GitHub Actions
+- Deployment / DevOps: Docker Compose, GitHub Actions
 
 ## Features
 
